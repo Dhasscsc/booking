@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>பயண முன்பதிவு (Train & Bus Ticket Booking) டூல்</title>
+    <style>
+        :root {
+            --primary: #0284c7; /* பயண சேவைகளுக்கு தெளிவான நீல நிறம் */
+            --secondary: #0369a1;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #cbd5e1;
+            --train-color: #b91c1c; /* இரயில் பிரிவுக்கு சிவப்பு */
+            --bus-color: #15803d; /* பேருந்து பிரிவுக்கு பச்சை */
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg); padding: 20px; max-width: 1500px; margin: 0 auto; display: flex; gap: 20px; }
+        
+        .form-container { flex: 1.3; background: var(--surface); padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .sidebar { flex: 0.7; background: var(--surface); padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-height: 90vh; display: flex; flex-direction: column; }
+        
+        header { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 2px solid var(--primary); }
+        header h1 { color: var(--primary); font-size: 1.6rem; }
+        
+        h2 { color: white; margin-bottom: 15px; font-size: 1.2rem; background: var(--primary); padding: 6px 10px; border-radius: 4px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .full-width { grid-column: span 2; }
+        
+        label { font-weight: 600; font-size: 0.9rem; color: #334155; }
+        input, select, textarea { padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; }
+        
+        /* Travel Type Selector */
+        .type-options { background: #f0f9ff; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #bae6fd; display: flex; justify-content: space-around; }
+        .radio-group { display: flex; align-items: center; gap: 8px; font-weight: bold; color: var(--secondary); cursor: pointer; }
+        .radio-group input { width: 18px; height: 18px; cursor: pointer; }
+
+        button[type="submit"] { padding: 12px; border: none; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; color: white; background: var(--primary); width: 100%; }
+        button[type="submit"]:hover { background: var(--secondary); }
+        
+        .blank-print-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; padding: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; }
+        .btn-blank { background: var(--success); font-size: 0.9rem; padding: 8px; border: none; color: white; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-blank:hover { background: #15803d; }
+
+        .history-list { overflow-y: auto; flex: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .history-item { border: 1px solid var(--border); padding: 12px; border-radius: 6px; background: #f8fafc; cursor: pointer; transition: all 0.2s; }
+        .history-item:hover { border-color: var(--primary); background: #f1f5f9; }
+        .search-box { padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; width: 100%; }
+
+        /* PRINT STYLES - PERFECT ONE PAGE A4 */
+        #print-area { display: none; }
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm 15mm 10mm 15mm;
+            }
+            html, body { background: #fff !important; background-color: #fff !important; width: 100%; height: 100%; }
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { 
+                display: block !important; 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%;
+                background: #fff !important; 
+                color: #000; 
+            }
+            
+            .p-header { text-align: center; margin-bottom: 15px; line-height: 1.4; border-bottom: 2px dashed #000; padding-bottom: 10px; }
+            .p-header h1 { font-size: 1.6rem; font-weight: bold; color: #000; }
+            .p-header p { font-size: 0.95rem; font-weight: 500; margin-top: 3px; }
+            
+            .p-title-box { text-align: center; margin: 15px 0; padding: 6px; border: 1px solid #000; font-weight: bold; font-size: 1.2rem; background: #f2f2f2 !important; }
+            
+            .p-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.95rem; }
+            .p-table th, .p-table td { border: 1px solid #000 !important; padding: 10px 12px !important; text-align: left; vertical-align: middle; color: #000 !important; }
+            .p-table td { height: 38px; } 
+            .p-table th { font-weight: bold; text-align: center; background: #f2f2f2 !important; height: 32px; }
+            
+            .p-footer { display: flex; justify-content: space-between; margin-top: 50px; font-size: 0.95rem; font-weight: bold; border-top: 1px solid #000; padding-top: 15px; }
+            
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <header>
+            <h1>டிக்கெட் முன்பதிவுச் சீட்டு (Travel Booking Receipt)</h1>
+        </header>
+
+        <div class="type-options">
+            <label class="radio-group" style="color: var(--train-color);"><input type="radio" name="travelType" value="இரயில் முன்பதிவு (Train Booking)" checked onchange="toggleFormMode()"> 🚂 இரயில் முன்பதிவு (Train)</label>
+            <label class="radio-group" style="color: var(--bus-color);"><input type="radio" name="travelType" value="பேருந்து முன்பதிவு (Bus Booking)" onchange="toggleFormMode()"> 🚌 பேருந்து முன்பதிவு (Bus)</label>
+        </div>
+
+        <h2>விண்ணப்ப விவரங்கள் (Data Entry)</h2>
+        <form id="bookingForm">
+            <div class="grid">
+                <div class="form-group">
+                    <label>1. முதன்மைப் பயணி பெயர் (Passenger Name):</label>
+                    <input type="text" id="passengerName" required placeholder="பெயர் தமிழில் / ஆங்கிலத்தில்">
+                </div>
+                <div class="form-group">
+                    <label>2. கைபேசி எண் (Mobile No):</label>
+                    <input type="tel" id="phone" required pattern="[0-9]{10}" placeholder="10 இலக்க எண்">
+                </div>
+
+                <div class="form-group">
+                    <label>3. புறப்படும் இடம் (From):</label>
+                    <input type="text" id="fromLocation" required placeholder="உதா: தூத்துக்குடி">
+                </div>
+                <div class="form-group">
+                    <label>4. சேருமிடம் (To):</label>
+                    <input type="text" id="toLocation" required placeholder="உதா: சென்னை">
+                </div>
+
+                <div class="form-group">
+                    <label>5. பயணத் தேதி (Journey Date):</label>
+                    <input type="date" id="journeyDate" required>
+                </div>
+                <div class="form-group">
+                    <label id="lblNoOrName">6. வண்டி எண் / பெயர் (Train No / Name):</label>
+                    <input type="text" id="travelName" required placeholder="உதா: 12694 / முத்துநகர் எக்ஸ்பிரஸ்">
+                </div>
+
+                <div class="form-group">
+                    <label id="lblClass">7. வகுப்பு / சீட் வகை (Class / Seat Type):</label>
+                    <select id="travelClass">
+                        <option value="Sleeper Class (SL)">Sleeper Class (SL)</option>
+                        <option value="AC 3 Tier (3A)">AC 3 Tier (3A)</option>
+                        <option value="AC 2 Tier (2A)">AC 2 Tier (2A)</option>
+                        <option value="Second Seating (2S)">Second Seating (2S)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>8. மொத்த பயணிகள் எண்ணிக்கை (No of Passengers):</label>
+                    <input type="number" id="passengerCount" min="1" max="10" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label id="lblPnr">9. PNR எண் / டிக்கெட் எண்:</label>
+                    <input type="text" id="pnrNo" required placeholder="உதா: 4231567890">
+                </div>
+                <div class="form-group">
+                    <label>10. சீட் / பெர்த் எண்கள் (Seat / Berth Nos):</label>
+                    <input type="text" id="seatNos" placeholder="உதா: S4 - 12, 14">
+                </div>
+
+                <div class="form-group">
+                    <label>11. மொத்த கட்டணம் ₹ (Total Fare):</label>
+                    <input type="number" id="totalFare" required placeholder="டிக்கெட் தொகை + சேவை கட்டணம்">
+                </div>
+                <div class="form-group">
+                    <label>12. புக்கிங் நிலை (Status):</label>
+                    <select id="bookingStatus">
+                        <option value="CONFIRMED / உறுதி செய்யப்பட்டது">CONFIRMED (உறுதி செய்யப்பட்டது)</option>
+                        <option value="RAC">RAC</option>
+                        <option value="WAITLISTED (காத்திருப்போர் பட்டியல்)">WAITLISTED</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit">💾 விபரங்களைச் சேமி & ரசீது பிரிண்ட் எடு</button>
+        </form>
+    </div>
+
+    <div class="sidebar">
+        <h2>அச்சு வசதிகள்</h2>
+        <div class="blank-print-box">
+            <button type="button" class="btn-blank" onclick="printBlankForm()">🖨️ வெற்று படிவம் பிரிண்ட் (Blank Form)</button>
+        </div>
+
+        <h2>முன்பதிவு வரலாறு</h2>
+        <input type="text" id="search" class="search-box" placeholder="பெயர் / போன் மூலம் தேட..." oninput="loadData()">
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <div id="print-area">
+        <div class="p-header">
+            <h1>தாஸ் பப்ளிக் சர்வீஸ் சென்டர் (Dhass PSC)</h1>
+            <p>ஸ்ரீவைகுண்டம், தமிழ்நாடு | 📱 மொபைல்: [உங்களுடைய தொடர்பு எண்]</p>
+            <p style="font-weight: bold; margin-top: 5px; color: #555;">டிக்கெட் முன்பதிவு உறுதிச் சீட்டு / ரசீது</p>
+        </div>
+
+        <div class="p-title-box" id="pTravelTitle">இரயில் முன்பதிவு (Train Booking)</div>
+
+        <table class="p-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">வ.எண்</th>
+                    <th style="width: 40%;">பயண விபரங்கள்</th>
+                    <th style="width: 50%;">விவரங்கள்</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="text-align: center;">1.</td>
+                    <td>முதன்மைப் பயணி பெயர்</td>
+                    <td><strong id="pPassengerName"></strong></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">2.</td>
+                    <td>தொடர்பு கைபேசி எண்</td>
+                    <td><span id="pPhone" style="font-weight:bold;"></span></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">3.</td>
+                    <td>பயண வழி (Route)</td>
+                    <td><strong><span id="pFrom"></span></strong> முதல் <strong><span id="pTo"></span></strong> வரை</td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">4.</td>
+                    <td>பயணத் தேதி (Journey Date)</td>
+                    <td><strong id="pDate"></strong></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">5.</td>
+                    <td id="pLblTravelName">வண்டி எண் / பெயர்</td>
+                    <td id="pTravelName"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">6.</td>
+                    <td>வகுப்பு / இருக்கை வகை</td>
+                    <td id="pClass"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">7.</td>
+                    <td>பயணிகள் எண்ணிக்கை</td>
+                    <td id="pCount"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">8.</td>
+                    <td id="pLblPnr">PNR எண் / டிக்கெட் எண்</td>
+                    <td><strong id="pPnrNo" style="font-size: 1.1rem; letter-spacing: 0.5px;"></strong></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">9.</td>
+                    <td>சீட் / பெர்த் எண்கள்</td>
+                    <td id="pSeatNos" style="font-weight: bold;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">10.</td>
+                    <td>மொத்தக் கட்டணம் (சேவை கட்டணம் உட்பட)</td>
+                    <td><strong style="font-size: 1.1rem;">₹ <span id="pTotalFare"></span> /-</strong></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">11.</td>
+                    <td>முன்பதிவு நிலை (Status)</td>
+                    <td><span id="pStatus" style="font-weight: bold; text-decoration: underline;"></span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; font-size: 0.85rem; line-height: 1.5; border: 1px solid #000; padding: 10px; border-radius: 4px;">
+            <strong>📌 முக்கிய அறிவுறுத்தல்கள்:</strong> <br>
+            1. பயணத்தின் போது பயணிகள் தங்களுடைய அசல் அடையாள அட்டை (ஆதார்/வாக்காளர் அட்டை/டிரைவிங் லைசென்ஸ்) ஏதேனும் ஒன்றை கையில் வைத்திருக்க வேண்டும்.<br>
+            2. இரயில் பயணங்கள் எனில் சார்ட் தயாரிப்பதற்கு முன்பாகவும், பேருந்து பயணங்கள் எனில் புறப்படும் நேரத்திற்கு 6 மணி நேரத்திற்கு முன்பாகவும் ரத்து செய்ய அணுகவும் (ரத்து செய்யும் போது அரசாங்க விதிமுறைப்படி பிடித்தம் போக மீதித் தொகை வழங்கப்படும்).
+        </div>
+
+        <div class="p-footer">
+            <div>
+                <p>ரசீது தேதி: <span id="pPrintDate"></span></p>
+            </div>
+            <div style="text-align: center;">
+                <p>தாஸ் பப்ளிக் சர்வீஸ் சென்டர்</p>
+                <p style="margin-top: 25px; font-size: 0.8rem; font-weight: normal;">(அதிகாரப்பூர்வ முத்திரை/கையொப்பம்)</p>
+            </div>
+        </div>
+    </div>
+
+    <script {nonce}>
+        let db;
+        const request = indexedDB.open("TravelBookingDB", 1);
+        
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+            if(!db.objectStoreNames.contains("bookings")) {
+                db.createObjectStore("bookings", { keyPath: "id", autoIncrement: true });
+            }
+        };
+        request.onsuccess = (e) => { db = e.target.result; loadData(); };
+
+        // Toggle Form Fields based on Train or Bus selection
+        function toggleFormMode() {
+            const type = document.querySelector('input[name="travelType"]:checked').value;
+            const lblNoOrName = document.getElementById('lblNoOrName');
+            const lblClass = document.getElementById('lblClass');
+            const lblPnr = document.getElementById('lblPnr');
+            const travelClass = document.getElementById('travelClass');
+            const travelName = document.getElementById('travelName');
+            const pnrNo = document.getElementById('pnrNo');
+
+            travelClass.innerHTML = "";
+
+            if (type === "இரயில் முன்பதிவு (Train Booking)") {
+                lblNoOrName.innerText = "6. வண்டி எண் / பெயர் (Train No / Name):";
+                lblClass.innerText = "7. வகுப்பு (Class):";
+                lblPnr.innerText = "9. PNR எண் (10 இலக்கம்):";
+                travelName.placeholder = "உதா: 12694 / முத்துநகர் எக்ஸ்பிரஸ்";
+                pnrNo.placeholder = "உதா: 4231567890";
+
+                const options = ["Sleeper Class (SL)", "AC 3 Tier (3A)", "AC 2 Tier (2A)", "Second Seating (2S)"];
+                options.forEach(opt => travelClass.add(new Option(opt, opt)));
+            } else {
+                lblNoOrName.innerText = "6. பேருந்து நிறுவனம் / வண்டி பெயர் (Bus Name):";
+                lblClass.innerText = "7. சீட் வகை (Seat Type):";
+                lblPnr.innerText = "9. டிக்கெட் எண் / புக்கிங் ID (Ticket No):";
+                travelName.placeholder = "உதா: SETC / KPN Travels";
+                pnrNo.placeholder = "உதா: TNX7894562";
+
+                const options = ["Sleeper (AC)", "Sleeper (Non-AC)", "Semi-Sleeper (AC)", "Semi-Sleeper (Non-AC)"];
+                options.forEach(opt => travelClass.add(new Option(opt, opt)));
+            }
+        }
+
+        // Handle Form Submit
+        document.getElementById('bookingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const record = {
+                travelType: document.querySelector('input[name="travelType"]:checked').value,
+                passengerName: document.getElementById('passengerName').value,
+                phone: document.getElementById('phone').value,
+                fromLocation: document.getElementById('fromLocation').value,
+                toLocation: document.getElementById('toLocation').value,
+                journeyDate: document.getElementById('journeyDate').value,
+                travelName: document.getElementById('travelName').value,
+                travelClass: document.getElementById('travelClass').value,
+                passengerCount: document.getElementById('passengerCount').value,
+                pnrNo: document.getElementById('pnrNo').value,
+                seatNos: document.getElementById('seatNos').value || '-',
+                totalFare: document.getElementById('totalFare').value,
+                bookingStatus: document.getElementById('bookingStatus').value,
+                createdDate: new Date().toLocaleDateString('en-GB')
+            };
+
+            const tx = db.transaction("bookings", "readwrite");
+            tx.objectStore("bookings").add(record);
+            
+            tx.oncomplete = () => {
+                alert("முன்பதிவு விபரங்கள் சேமிக்கப்பட்டன!");
+                loadData();
+                printBookingForm(record, false);
+                document.getElementById('bookingForm').reset();
+                toggleFormMode();
+            };
+        });
+
+        function loadData() {
+            const searchQ = document.getElementById('search').value.toLowerCase();
+            const list = document.getElementById('historyList');
+            list.innerHTML = "";
+
+            db.transaction("bookings", "readonly").objectStore("bookings").openCursor(null, "prev").onsuccess = (e) => {
+                const cursor = e.target.result;
+                if(cursor) {
+                    const v = cursor.value;
+                    if(v.passengerName.toLowerCase().includes(searchQ) || v.phone.includes(searchQ)) {
+                        const div = document.createElement('div');
+                        div.className = "history-item";
+                        div.onclick = () => printBookingForm(v, false);
+                        div.innerHTML = `
+                            <strong>${v.passengerName} (${v.fromLocation} -> ${v.toLocation})</strong><br>
+                            <small>🎫 ${v.travelType} | 📅 தேதி: ${v.journeyDate}</small>
+                        `;
+                        list.appendChild(div);
+                    }
+                    cursor.continue();
+                }
+            };
+        }
+
+        function printBookingForm(v, isBlank = false) {
+            if (isBlank) {
+                const checkedType = document.querySelector('input[name="travelType"]:checked').value;
+                document.getElementById('pTravelTitle').innerText = checkedType;
+                
+                if(checkedType === "இரயில் முன்பதிவு (Train Booking)") {
+                    document.getElementById('pLblTravelName').innerText = "வண்டி எண் / பெயர்";
+                    document.getElementById('pLblPnr').innerText = "PNR எண்";
+                } else {
+                    document.getElementById('pLblTravelName').innerText = "பேருந்து நிறுவனம் / பெயர்";
+                    document.getElementById('pLblPnr').innerText = "டிக்கெட் எண் / ID";
+                }
+
+                document.getElementById('pPassengerName').innerHTML = "&nbsp;";
+                document.getElementById('pPhone').innerHTML = "&nbsp;";
+                document.getElementById('pFrom').innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+                document.getElementById('pTo').innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+                document.getElementById('pDate').innerHTML = "&nbsp;";
+                document.getElementById('pTravelName').innerHTML = "&nbsp;";
+                document.getElementById('pClass').innerHTML = "&nbsp;";
+                document.getElementById('pCount').innerHTML = "&nbsp;";
+                document.getElementById('pPnrNo').innerHTML = "&nbsp;";
+                document.getElementById('pSeatNos').innerHTML = "&nbsp;";
+                document.getElementById('pTotalFare').innerHTML = "&nbsp;";
+                document.getElementById('pStatus').innerHTML = "&nbsp;";
+                document.getElementById('pPrintDate').innerText = "____/____/________";
+            } else {
+                document.getElementById('pTravelTitle').innerText = v.travelType;
+                
+                if(v.travelType === "இரயில் முன்பதிவு (Train Booking)") {
+                    document.getElementById('pLblTravelName').innerText = "வண்டி எண் / பெயர்";
+                    document.getElementById('pLblPnr').innerText = "PNR எண்";
+                } else {
+                    document.getElementById('pLblTravelName').innerText = "பேருந்து நிறுவனம் / பெயர்";
+                    document.getElementById('pLblPnr').innerText = "டிக்கெட் எண் / ID";
+                }
+
+                // Format Date nicely
+                const formattedDate = new Date(v.journeyDate).toLocaleDateString('ta-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+                document.getElementById('pPassengerName').innerText = v.passengerName;
+                document.getElementById('pPhone').innerText = v.phone;
+                document.getElementById('pFrom').innerText = v.fromLocation;
+                document.getElementById('pTo').innerText = v.toLocation;
+                document.getElementById('pDate').innerText = formattedDate;
+                document.getElementById('pTravelName').innerText = v.travelName;
+                document.getElementById('pClass').innerText = v.travelClass;
+                document.getElementById('pCount').innerText = v.passengerCount + " நபர்(கள்)";
+                document.getElementById('pPnrNo').innerText = v.pnrNo;
+                document.getElementById('pSeatNos').innerText = v.seatNos;
+                document.getElementById('pTotalFare').innerText = Number(v.totalFare).toLocaleString('en-IN');
+                document.getElementById('pStatus').innerText = v.bookingStatus;
+                document.getElementById('pPrintDate').innerText = v.createdDate;
+            }
+
+            window.print();
+        }
+
+        function printBlankForm() {
+            printBookingForm(null, true);
+        }
+    </script>
+</body>
+</html>
